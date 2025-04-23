@@ -1,46 +1,49 @@
-import React, {useEffect, useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 
 interface TaskItem {
     id: string;
     text: string;
 }
 
+const API_URL = process.env.REACT_APP_API_URL;
+
 const TaskPage = () => {
     const [text, setText] = useState<string>("");
     const [tasks, setTasks] = useState<TaskItem[]>([]);
 
-    const getAllTasks = async () => {
-        const tasksResponse = await fetch(process.env.REACT_APP_API_URL + "/Task");
-        const tasksData = await tasksResponse.json();
-        setTasks(tasksData);
-    }
+    const getAllTasks = useCallback(async () => {
+        try {
+            const response = await fetch(`${API_URL}/Task`);
+            if (!response.ok) throw new Error("Failed to fetch tasks");
+            const data = await response.json();
+            setTasks(data);
+        } catch (err: any) {
+            console.log(err.message);
+        }
+    }, []);
 
     const handleButtonClick = async () => {
         try {
-            const response = await fetch(process.env.REACT_APP_API_URL + "/Task", {
+            const response = await fetch(`${API_URL}/Task`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ text }),
+                body: JSON.stringify({text}),
             });
 
-            if (response.ok) {
-                await getAllTasks();
-            } else {
-                console.error("Failed to send request");
-            }
-        } catch (error) {
-            console.error("Error:", error);
+            if (!response.ok) throw new Error("Failed to add task");
+
+            setText("");
+            await getAllTasks();
+        } catch (err: any) {
+            console.log(err.message);
         }
     };
 
     useEffect(() => {
-        const fetchTasks = async () => {
-            await getAllTasks();
-        };
-        fetchTasks();
-    }, []);
+        getAllTasks();
+    }, [getAllTasks]);
 
     return (
         <div>
@@ -50,7 +53,9 @@ const TaskPage = () => {
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Enter text"
             />
-            <button onClick={handleButtonClick}>Send Request</button>
+            <button onClick={handleButtonClick} disabled={!text.trim()}>
+                Send Request
+            </button>
 
             <h2>Tasks</h2>
             <ul>
